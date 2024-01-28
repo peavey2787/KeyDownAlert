@@ -27,6 +27,7 @@ namespace KeyDownAlert
         private int circleDiameter = 100; // Default diameter
 
 
+        #region Load/Close
         public Form1()
         {
             InitializeComponent();
@@ -46,6 +47,11 @@ namespace KeyDownAlert
 
             // Subscribe to the InputChanged event
             InputChanged += (sender, e) => Task.Run(() => UpdateUI());
+
+            // Add the context menu to the form
+            this.ContextMenuStrip = new ContextMenuStrip();
+            this.ContextMenuStrip.Items.Add("Settings", null, SettingsMenuItem_Click);
+            this.ContextMenuStrip.Items.Add("Exit", null, ExitMenuItem_Click);
         }
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -71,6 +77,28 @@ namespace KeyDownAlert
 
             SetWindowPos(this.Handle, hwnd, 0, 0, 0, 0, TOPMOST_FLAGS);
         }
+        #endregion
+
+        #region Menu Clicks
+        private void SettingsMenuItem_Click(object sender, EventArgs e)
+        {
+            // Show the settings form
+            using (SettingsForm inputDialog = new SettingsForm())
+            {
+                if (inputDialog.ShowDialog() == DialogResult.OK)
+                {
+                    circleDiameter = inputDialog.Diameter;
+                    UpdateUI();
+                }
+            }
+        }
+        private void ExitMenuItem_Click(object sender, EventArgs e)
+        {
+            // Close the application
+            this.Close();
+        }
+        #endregion
+
 
         #region Hooks
         private IntPtr SetMouseHook(HookProc proc)
@@ -156,7 +184,7 @@ namespace KeyDownAlert
         }
 
 
-
+        #region Mouse Events
         private void Form1_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
@@ -175,27 +203,12 @@ namespace KeyDownAlert
                 DateTime now = DateTime.Now;
                 if ((now - lastClickTime).TotalMilliseconds < SystemInformation.DoubleClickTime)
                 {
-                    // Double-click detected, temporarily disable "always on top"
-                    SetTopMost(false, Handle);
-
-                    // Show the settings form
-                    using (SettingsForm inputDialog = new SettingsForm())
-                    {
-                        if (inputDialog.ShowDialog() == DialogResult.OK)
-                        {
-                            circleDiameter = inputDialog.Diameter;
-                            UpdateUI();
-                        }
-                    }
-
-                    // Re-enable "always on top" after settings form is closed
-                    SetTopMost(true, Handle);
+                    // Perform double click action
                 }
 
                 lastClickTime = now;
             }
         }
-
         private void Form1_MouseMove(object sender, MouseEventArgs e)
         {
             if (isMouseDown)
@@ -208,6 +221,8 @@ namespace KeyDownAlert
                 this.Location = new Point(newX, newY);
             }
         }
+        #endregion
+
 
         #region WinDLLs
 
