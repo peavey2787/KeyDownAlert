@@ -63,8 +63,11 @@ namespace KeyDownAlert
         }
         private void SettingsForm_Load(object sender, EventArgs e)
         {
+            SetTextBoxes();
+        }
+        private void SetTextBoxes()
+        {
             DiameterTextBox.Text = Diameter.ToString();
-
             NotPressedATextBox.Text = NotPressedColor.A.ToString();
             NotPressedRTextBox.Text = NotPressedColor.R.ToString();
             NotPressedGTextBox.Text = NotPressedColor.G.ToString();
@@ -75,7 +78,6 @@ namespace KeyDownAlert
             PressedGTextBox.Text = PressedColor.G.ToString();
             PressedBTextBox.Text = PressedColor.B.ToString();
         }
-
         private int Clamp(int value, int min, int max)
         {
             return (value < min) ? min : (value > max) ? max : value;
@@ -204,6 +206,7 @@ namespace KeyDownAlert
             PressedColor = Color.Red;
             NotPressedColor = Color.Green;
             Diameter = 100;
+            SetTextBoxes();
             UpdatePressed();
             UpdateNotPressed();
             UpdateDiameter();
