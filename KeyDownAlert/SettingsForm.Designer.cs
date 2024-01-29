@@ -48,21 +48,26 @@
             this.PressedGTextBox = new System.Windows.Forms.TextBox();
             this.PressedRTextBox = new System.Windows.Forms.TextBox();
             this.PressedATextBox = new System.Windows.Forms.TextBox();
+            this.DefaultsButton = new System.Windows.Forms.Button();
+            this.label12 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // DiameterTextBox
             // 
-            this.DiameterTextBox.Location = new System.Drawing.Point(122, 30);
+            this.DiameterTextBox.Location = new System.Drawing.Point(126, 49);
             this.DiameterTextBox.Name = "DiameterTextBox";
             this.DiameterTextBox.Size = new System.Drawing.Size(38, 20);
             this.DiameterTextBox.TabIndex = 0;
             this.DiameterTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.DiameterTextBox_KeyDown);
             this.DiameterTextBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.DiameterTextBox_KeyUp);
+            this.DiameterTextBox.MouseDown += new System.Windows.Forms.MouseEventHandler(this.DiameterTextBox_MouseDown);
+            this.DiameterTextBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.DiameterTextBox_MouseMove);
+            this.DiameterTextBox.MouseUp += new System.Windows.Forms.MouseEventHandler(this.DiameterTextBox_MouseUp);
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(38, 34);
+            this.label1.Location = new System.Drawing.Point(42, 53);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(78, 13);
             this.label1.TabIndex = 1;
@@ -246,11 +251,32 @@
             this.PressedATextBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.NotPressedTextBox_MouseMove);
             this.PressedATextBox.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NotPressedTextBox_MouseUp);
             // 
+            // DefaultsButton
+            // 
+            this.DefaultsButton.Location = new System.Drawing.Point(68, 12);
+            this.DefaultsButton.Name = "DefaultsButton";
+            this.DefaultsButton.Size = new System.Drawing.Size(55, 19);
+            this.DefaultsButton.TabIndex = 21;
+            this.DefaultsButton.Text = "Defaults";
+            this.DefaultsButton.UseVisualStyleBackColor = true;
+            this.DefaultsButton.Click += new System.EventHandler(this.DefaultsButton_Click);
+            // 
+            // label12
+            // 
+            this.label12.AutoSize = true;
+            this.label12.Location = new System.Drawing.Point(38, 236);
+            this.label12.Name = "label12";
+            this.label12.Size = new System.Drawing.Size(136, 13);
+            this.label12.TabIndex = 22;
+            this.label12.Text = "Tip: Click and Drag to +/- 1";
+            // 
             // SettingsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(212, 253);
+            this.Controls.Add(this.label12);
+            this.Controls.Add(this.DefaultsButton);
             this.Controls.Add(this.label8);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.label10);
@@ -302,5 +328,7 @@
         private System.Windows.Forms.TextBox PressedGTextBox;
         private System.Windows.Forms.TextBox PressedRTextBox;
         private System.Windows.Forms.TextBox PressedATextBox;
+        private System.Windows.Forms.Button DefaultsButton;
+        private System.Windows.Forms.Label label12;
     }
 }

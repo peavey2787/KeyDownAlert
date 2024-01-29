@@ -14,39 +14,73 @@ using System.Drawing;
 
 namespace KeyDownAlert
 {
+
+
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using Newtonsoft.Json;
+
     public static class AppSettings
     {
-        private static readonly string SettingsFilePath = "AppSettings.json";
-        private static readonly object SaveLock = new object();
-        private static readonly object LoadLock = new object();
+        private static readonly string storagePath = "appSettings.json";
+        private static readonly object locker = new object();
 
         public static void Save<T>(string key, T value)
         {
-            lock (SaveLock)
+            lock (locker)
             {
-                string json = JsonConvert.SerializeObject(value, Formatting.Indented);
-                File.WriteAllText(SettingsFilePath, json);
+                try
+                {
+                    var storage = File.Exists(storagePath)
+                        ? JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(storagePath))
+                        : new Dictionary<string, string>();
+
+                    storage[key] = JsonConvert.SerializeObject(value);
+
+                    File.WriteAllText(storagePath, JsonConvert.SerializeObject(storage));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred while storing the object: {ex.Message}");
+                }
             }
         }
-
         public static T Load<T>(string key)
         {
-            lock (LoadLock)
+            lock (locker)
             {
-                if (File.Exists(SettingsFilePath))
+                try
                 {
-                    string json = File.ReadAllText(SettingsFilePath);
-                    if (json == null || json == "\"\"") return default(T);
-                    try { return JsonConvert.DeserializeObject<T>(json); }
-                    catch { }
+                    if (File.Exists(storagePath))
+                    {
+                        var storage = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(storagePath));
+
+                        if (storage.ContainsKey(key))
+                        {
+                            return JsonConvert.DeserializeObject<T>(storage[key]);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"No object found with the key: {key}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("The storage file does not exist.");
+                    }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred while retrieving the object: {ex.Message}");
+                }
+
                 return default(T);
             }
         }
-
         public static void SaveSerialized<T>(string key, T value)
         {
-            lock (SaveLock)
+            lock (locker)
             {
                 IFormatter formatter = new BinaryFormatter();
                 using (Stream stream = new FileStream(key + ".dat", FileMode.Create, FileAccess.Write, FileShare.None))
@@ -55,10 +89,9 @@ namespace KeyDownAlert
                 }
             }
         }
-
         public static T LoadSerialized<T>(string key)
         {
-            lock (LoadLock)
+            lock (locker)
             {
                 IFormatter formatter = new BinaryFormatter();
                 try
@@ -83,6 +116,7 @@ namespace KeyDownAlert
             }
         }
     }
+
 
     public class EncryptionHelper
     {

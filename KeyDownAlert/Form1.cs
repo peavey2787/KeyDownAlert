@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -16,25 +18,33 @@ namespace KeyDownAlert
 
         private readonly HookProc mouseHookCallback;
         private readonly HookProc keyboardHookCallback;
-        
+
+        private List<string> activatedButtons = new List<string>();
+        private List<string> activatedKeys = new List<string>();
+
+        private bool isSettingsFormOpen = false;
+        private int circleDiameter = 100;
+        private Color backgroundColor = SystemColors.Control;
         private DateTime lastClickTime = DateTime.MinValue;
         bool clearCircle = false;
+        int sideMouseBtnDown = 0;
+        bool mMouseToggle = false;
         Color notPressedColor;
         Color pressedColor;
 
         private bool isMouseDown = false;
         private Point mouseDownLocation;
+        private bool sideMouseBtnToggle = false;
 
         private bool isInputActive = false;
         private IntPtr mouseHookId;
         private IntPtr keyboardHookId;
 
-        public event EventHandler InputChanged;
+        public event EventHandler<InputChangedEventArgs> InputChanged;
 
-        private int circleDiameter = 100; // Default diameter
-        private Color backgroundColor = Color.Blue;// SystemColors.Control;
+
         public void SetPressedColor(Color color)
-        { 
+        {
             this.pressedColor = color;
             clearCircle = true;
             Invalidate();
@@ -42,6 +52,12 @@ namespace KeyDownAlert
         public void SetNotPressedColor(Color color)
         {
             this.notPressedColor = color;
+            clearCircle = true;
+            Invalidate();
+        }
+        public void SetDiameter(int diameter)
+        { 
+            circleDiameter = diameter;
             clearCircle = true;
             Invalidate();
         }
@@ -119,8 +135,6 @@ namespace KeyDownAlert
             LoadColors();
 
             this.Invalidate();
-            this.Refresh();
-            this.Invalidate(true);
         }
         public void LoadColors()
         {
@@ -130,7 +144,7 @@ namespace KeyDownAlert
             int pressedColorB = AppSettings.Load<int>("PressedColorB");
             pressedColor = Color.FromArgb(pressedColorA, pressedColorR, pressedColorG, pressedColorB);
 
-            if (pressedColor == Color.FromArgb(0,0,0,0))
+            if (pressedColor == Color.FromArgb(0, 0, 0, 0))
                 pressedColor = Color.Red;
 
             int notPressedColorA = AppSettings.Load<int>("NotPressedColorA");
@@ -165,8 +179,22 @@ namespace KeyDownAlert
             AppSettings.Save<int>("NotPressedColorG", notPressedColor.G);
             AppSettings.Save<int>("NotPressedColorB", notPressedColor.B);
         }
+        private void StartHooking()
+        {
+            InputChanged += InputChangedHandler;
+            mouseHookId = SetMouseHook(mouseHookCallback);
+            keyboardHookId = SetKeyboardHook(keyboardHookCallback);
+            StayInFront(Handle);
+        }
+        private void StopHooking()
+        {
+            InputChanged -= InputChangedHandler;
+            UnhookWindowsHookEx(mouseHookId);
+            UnhookWindowsHookEx(keyboardHookId);
+            StopBeingAlwaysOnTop(Handle);
+        }        
         public static void StayInFront(IntPtr hwnd)
-        {            
+        {
             SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, TOPMOST_FLAGS);
         }
         public static void StopBeingAlwaysOnTop(IntPtr hwnd)
@@ -175,27 +203,147 @@ namespace KeyDownAlert
         }
         #endregion
 
-        private void InputChangedHandler(object sender, EventArgs e)
+
+        private void InputChangedHandler(object sender, InputChangedEventArgs e)
         {
-            // This will be executed when the input changes
-            // You can handle it in a separate task if needed
-            //Task.Run(() => UpdateUI());
+            IntPtr wParam = e.WParam;
+            int num = (int)(IntPtr)wParam;
+            //textBox1.AppendText($"\n num= {num}");
+
+            string keyboard = "keyboard";
+            string lMouseButton = "LMB";
+            string rMouseButton = "RMB";
+            string mMouseButton = "MMB";
+            string sideMouseButton = "XMB";
+
+            if (wParam == (IntPtr)WM_KEYDOWN || (int)wParam == (int)(IntPtr)WM_KEYDOWN)
+            {
+                // Handle keyboard key down event
+                if (!activatedKeys.Contains(keyboard))
+                {
+                    activatedKeys.Add(keyboard);
+                }
+            }
+            else if (wParam == (IntPtr)WM_KEYUP || (int)wParam == (int)(IntPtr)WM_KEYUP)
+            {
+                // Handle keyboard key up event
+                if (activatedKeys.Contains(keyboard))
+                {
+                    activatedKeys.Remove(keyboard);
+                }
+            }
+            else if (wParam == (IntPtr)WM_LBUTTONDOWN || (int)wParam == (int)(IntPtr)WM_LBUTTONDOWN)
+            {
+                // Left mouse button pressed
+                if (!activatedButtons.Contains(lMouseButton))
+                {
+                    activatedButtons.Add(lMouseButton);
+                }
+            }
+            else if (wParam == (IntPtr)WM_LBUTTONUP || (int)wParam == (int)(IntPtr)WM_LBUTTONUP)
+            {
+                // Left mouse button released
+                if (activatedButtons.Contains(lMouseButton))
+                {
+                    activatedButtons.Remove(lMouseButton);
+                }
+            }
+            else if (wParam == (IntPtr)WM_RBUTTONDOWN || (int)wParam == (int)(IntPtr)WM_RBUTTONDOWN)
+            {
+                // Right mouse button pressed
+                if (!activatedButtons.Contains(rMouseButton))
+                {
+                    activatedButtons.Add(rMouseButton);
+                }
+            }
+            else if (wParam == (IntPtr)WM_RBUTTONUP || (int)wParam == (int)(IntPtr)WM_RBUTTONUP)
+            {
+                // Right mouse button released
+                if (activatedButtons.Contains(rMouseButton))
+                {
+                    activatedButtons.Remove(rMouseButton);
+                }
+            }
+            else if (wParam == (IntPtr)WM_MBUTTONDOWN || (int)wParam == (int)(IntPtr)WM_MBUTTONDOWN)
+            {
+                if (!mMouseToggle)
+                {
+                    // Middle mouse button pressed
+                    if (!activatedButtons.Contains(mMouseButton))
+                    {
+                        activatedButtons.Add(mMouseButton);
+                        mMouseToggle = true;
+                    }
+                }
+                else
+                {
+                    // Middle mouse button released
+                    if (activatedButtons.Contains(mMouseButton))
+                    {
+                        activatedButtons.Remove(mMouseButton);
+                    }
+                    mMouseToggle = false;
+                }
+            }
+            else if (wParam == (IntPtr)WM_MBUTTONUP || (int)wParam == (int)(IntPtr)WM_MBUTTONUP)
+            {
+                /*if (activatedButtons.Contains(mMouseButton))
+                    {
+                        activatedButtons.Remove(mMouseButton);
+                    }*/
+            }
+
+            // Side buttons down = 523, up = 524
+            else if ((wParam.ToInt32() & 0xFFFF) == WM_XBUTTONDOWN || (int)wParam == (int)(IntPtr)WM_XBUTTONDOWN)
+            {
+                sideMouseBtnDown++;
+                if (sideMouseBtnDown > 1)
+                {
+                    sideMouseBtnDown = 0;
+                    return;
+                }
+
+                if (!activatedButtons.Contains(sideMouseButton))
+                {
+                    activatedButtons.Add(sideMouseButton);
+                }
+                else
+                {
+                    activatedButtons.Remove(sideMouseButton);
+                }
+            }
+            else if ((wParam.ToInt32() & 0xFFFF) == WM_XBUTTONUP || (int)wParam == (int)(IntPtr)WM_XBUTTONUP)
+            {
+                sideMouseBtnDown++;
+                if (sideMouseBtnDown > 1)
+                {
+                    sideMouseBtnDown = 0;
+                    return;
+                }
+
+                if (!activatedButtons.Contains(sideMouseButton))
+                {
+                    activatedButtons.Add(sideMouseButton);
+                }
+                else
+                {
+                    activatedButtons.Remove(sideMouseButton);
+                }
+            }
+
+            // Only change colors if a button is not pressed
+            if (activatedButtons.Count == 0 && activatedKeys.Count == 0)
+            {
+                isInputActive = false;
+            }
+            else
+            {
+                isInputActive = true;
+            }
+
             Invalidate();
         }
-        private void StopHooking()
-        {
-            InputChanged -= InputChangedHandler;
-            UnhookWindowsHookEx(mouseHookId);
-            UnhookWindowsHookEx(keyboardHookId);
-            StopBeingAlwaysOnTop(Handle);
-        }
-        private void StartHooking()
-        {
-            InputChanged += InputChangedHandler;
-            mouseHookId = SetMouseHook(mouseHookCallback);
-            keyboardHookId = SetKeyboardHook(keyboardHookCallback);
-            StayInFront(Handle);
-        }
+
 
 
         #region Menu Clicks
@@ -212,7 +360,8 @@ namespace KeyDownAlert
         }
         #endregion
 
-        private bool isSettingsFormOpen = false;
+
+        
         private void ShowSettingsForm()
         {
             if (isSettingsFormOpen)
@@ -245,10 +394,7 @@ namespace KeyDownAlert
 
             clearCircle = true;
             Invalidate();
-            Refresh();
-            Invalidate();
-            Refresh();
-            //StayInFront(Handle);
+            StayInFront(Handle);
 
             isSettingsFormOpen = false;
         }
@@ -275,20 +421,24 @@ namespace KeyDownAlert
         {
             if (nCode >= 0)
             {
-                MSLLHOOKSTRUCT mouseHookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
-                bool newInputState = wParam == (IntPtr)WM_LBUTTONDOWN ||
-                                     wParam == (IntPtr)WM_RBUTTONDOWN ||
-                                     wParam == (IntPtr)WM_MBUTTONDOWN;
-
+                // Skip mouse move
                 if (wParam == (IntPtr)WM_MOUSEMOVE)
                     return CallNextHookEx(mouseHookId, nCode, wParam, lParam);
+                else
+                    OnInputChanged(wParam);
+                /*
+                bool newInputState = wParam == (IntPtr)WM_LBUTTONDOWN ||
+                                     wParam == (IntPtr)WM_RBUTTONDOWN ||
+                                     wParam == (IntPtr)WM_MBUTTONDOWN ||
+                                     wParam == (IntPtr)(WM_XBUTTONDOWN | XBUTTON1) ||
+                                     wParam == (IntPtr)(WM_XBUTTONDOWN | XBUTTON2) ||
+                                     wParam == (IntPtr)WM_MOUSEWHEEL;
 
                 // Notify subscribers about the input change
                 if (newInputState != isInputActive)
                 {
-                    isInputActive = newInputState;
-                    OnInputChanged();
-                }
+                    OnInputChanged(wParam);
+                }*/
             }
 
             return CallNextHookEx(mouseHookId, nCode, wParam, lParam);
@@ -297,14 +447,13 @@ namespace KeyDownAlert
         {
             if (nCode >= 0)
             {
-                KBDLLHOOKSTRUCT keyHookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                 bool newInputState = wParam == (IntPtr)WM_KEYDOWN;
 
                 // Notify subscribers about the input change
                 if (newInputState != isInputActive)
                 {
                     isInputActive = newInputState;
-                    OnInputChanged();
+                    OnInputChanged(wParam);
                 }
             }
 
@@ -361,18 +510,37 @@ namespace KeyDownAlert
         #region WinDLLs
 
         // Event handler for InputChanged event
-        protected virtual void OnInputChanged()
+        protected virtual void OnInputChanged(IntPtr wParam)
         {
-            InputChanged?.Invoke(this, EventArgs.Empty);
+            InputChanged?.Invoke(this, new InputChangedEventArgs(wParam));
+        }
+
+        public class InputChangedEventArgs : EventArgs
+        {
+            public IntPtr WParam { get; }
+
+            public InputChangedEventArgs(IntPtr wParam)
+            {
+                WParam = wParam;
+            }
         }
 
         private const int WH_MOUSE_LL = 14;
         private const int WH_KEYBOARD_LL = 13;
-        private const uint WM_LBUTTONDOWN = 0x0201;
-        private const uint WM_RBUTTONDOWN = 0x0204;
-        private const uint WM_MBUTTONDOWN = 0x0207;
         private const uint WM_KEYDOWN = 0x0100;
+        private const uint WM_KEYUP = 0x0101;
+        const int WM_MOUSEWHEEL = 0x020A;
         private const uint WM_MOUSEMOVE = 0x0200;
+        private const uint WM_LBUTTONDOWN = 0x0201;
+        private const uint WM_LBUTTONUP = 0x0202;
+        private const uint WM_RBUTTONDOWN = 0x0204;
+        private const uint WM_RBUTTONUP = 0x0205;
+        private const uint WM_MBUTTONDOWN = 0x0207;
+        private const uint WM_MBUTTONUP = 0x0208;        
+        const int WM_XBUTTONDOWN = 0x020B;
+        const int WM_XBUTTONUP = 0x020C;
+        const int XBUTTON1 = 0x0001;
+        const int XBUTTON2 = 0x0002;
 
         private const int WM_PAINT = 0x000F;
 

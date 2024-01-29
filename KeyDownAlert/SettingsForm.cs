@@ -70,10 +70,10 @@ namespace KeyDownAlert
             NotPressedGTextBox.Text = NotPressedColor.G.ToString();
             NotPressedBTextBox.Text = NotPressedColor.B.ToString();
 
-            PressedATextBox.Text = NotPressedColor.A.ToString();
-            PressedRTextBox.Text = NotPressedColor.R.ToString();
-            PressedGTextBox.Text = NotPressedColor.G.ToString();
-            PressedBTextBox.Text = NotPressedColor.B.ToString();
+            PressedATextBox.Text = PressedColor.A.ToString();
+            PressedRTextBox.Text = PressedColor.R.ToString();
+            PressedGTextBox.Text = PressedColor.G.ToString();
+            PressedBTextBox.Text = PressedColor.B.ToString();
         }
 
         private int Clamp(int value, int min, int max)
@@ -104,6 +104,9 @@ namespace KeyDownAlert
 
                 Invalidate();
             }
+            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            form1.SetNotPressedColor(NotPressedColor);
+            form1.SetDiameter(Diameter);
         }
         private void PressedTextBox_KeyDown(object sender, KeyEventArgs e)
         {
@@ -129,6 +132,9 @@ namespace KeyDownAlert
 
                 Invalidate();
             }
+
+            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            form1.SetPressedColor(PressedColor);
         }
         private void NotPressedTextBox_MouseDown(object sender, MouseEventArgs e)
         {
@@ -175,8 +181,14 @@ namespace KeyDownAlert
             }
         }
 
+        private void UpdateDiameter()
+        {
+            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            form1.SetDiameter(Diameter);
+        }
         private void DiameterTextBox_KeyDown(object sender, KeyEventArgs e)
-        {            
+        {
+
         }
 
         private void DiameterTextBox_KeyUp(object sender, KeyEventArgs e)
@@ -184,6 +196,60 @@ namespace KeyDownAlert
             if (int.TryParse(DiameterTextBox.Text, out int diameter) && diameter > 0)
             {
                 Diameter = diameter;
+            }
+        }
+
+        private void DefaultsButton_Click(object sender, EventArgs e)
+        {
+            PressedColor = Color.Red;
+            NotPressedColor = Color.Green;
+            Diameter = 100;
+            UpdatePressed();
+            UpdateNotPressed();
+            UpdateDiameter();
+        }
+
+
+        private void DiameterTextBox_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                isDragging = true;
+                dragStartPoint = e.Location;
+                (sender as TextBox).Cursor = Cursors.Hand;
+            }
+        }
+
+        private void DiameterTextBox_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isDragging)
+            {
+                int deltaX = e.X - dragStartPoint.X;
+                int sign = Math.Sign(deltaX);
+
+                if (sign != 0)
+                {
+                    int currentValue;
+                    if (int.TryParse((sender as TextBox).Text, out currentValue))
+                    {
+                        // Use the Clamp function to keep the value within the range of 0 and 255
+                        currentValue = Clamp(currentValue + sign * dragStep, 0, 5555);
+
+                        (sender as TextBox).Text = currentValue.ToString();
+                        Diameter = currentValue;
+                        UpdateDiameter();
+                    }
+                }
+                dragStartPoint = e.Location;
+            }
+        }
+
+        private void DiameterTextBox_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                isDragging = false;
+                (sender as TextBox).Cursor = Cursors.IBeam;
             }
         }
     }
