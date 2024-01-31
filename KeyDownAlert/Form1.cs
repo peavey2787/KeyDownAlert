@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -15,6 +16,7 @@ namespace KeyDownAlert
     public partial class Form1 : Form
     {
         SettingsForm settingsForm;
+        KeyHolder keyHolder = new KeyHolder();
 
         private readonly HookProc mouseHookCallback;
         private readonly HookProc keyboardHookCallback;
@@ -34,11 +36,22 @@ namespace KeyDownAlert
 
         private bool isMouseDown = false;
         private Point mouseDownLocation;
-        private bool sideMouseBtnToggle = false;
+        private bool sideMouseBtn1Toggle = true;
+        private bool sideMouseBtn2Toggle = true;
 
         private bool isInputActive = false;
         private IntPtr mouseHookId;
         private IntPtr keyboardHookId;
+
+        int sideMouseButton1 = 131072;
+        int sideMouseButton2 = 65536;
+        int sideMouseButtonUp = 524;
+        int sideMouseButtonDown = 523;
+
+        string keyboard = "keyboard";
+        string lMouseButton = "LMB";
+        string rMouseButton = "RMB";
+        string mMouseButton = "MMB";
 
         public event EventHandler<InputChangedEventArgs> InputChanged;
 
@@ -59,6 +72,7 @@ namespace KeyDownAlert
         { 
             circleDiameter = diameter;
             clearCircle = true;
+            Size = new Size(circleDiameter, circleDiameter);
             Invalidate();
         }
         #region Load/Close
@@ -207,14 +221,11 @@ namespace KeyDownAlert
         private void InputChangedHandler(object sender, InputChangedEventArgs e)
         {
             IntPtr wParam = e.WParam;
+            int buttonNumber = e.ButtonNumber;
             int num = (int)(IntPtr)wParam;
             //textBox1.AppendText($"\n num= {num}");
 
-            string keyboard = "keyboard";
-            string lMouseButton = "LMB";
-            string rMouseButton = "RMB";
-            string mMouseButton = "MMB";
-            string sideMouseButton = "XMB";
+
 
             if (wParam == (IntPtr)WM_KEYDOWN || (int)wParam == (int)(IntPtr)WM_KEYDOWN)
             {
@@ -272,8 +283,11 @@ namespace KeyDownAlert
                     if (!activatedButtons.Contains(mMouseButton))
                     {
                         activatedButtons.Add(mMouseButton);
-                        mMouseToggle = true;
                     }
+                    mMouseToggle = true;
+
+                    // Action On
+                    InvokeMethodByName(this, "AutoRunOn");
                 }
                 else
                 {
@@ -283,6 +297,9 @@ namespace KeyDownAlert
                         activatedButtons.Remove(mMouseButton);
                     }
                     mMouseToggle = false;
+
+                    // Action Off
+                    InvokeMethodByName(this, "AutoRunOff");
                 }
             }
             else if (wParam == (IntPtr)WM_MBUTTONUP || (int)wParam == (int)(IntPtr)WM_MBUTTONUP)
@@ -291,45 +308,56 @@ namespace KeyDownAlert
                     {
                         activatedButtons.Remove(mMouseButton);
                     }*/
-            }
-
-            // Side buttons down = 523, up = 524
-            else if ((wParam.ToInt32() & 0xFFFF) == WM_XBUTTONDOWN || (int)wParam == (int)(IntPtr)WM_XBUTTONDOWN)
+            }            
+            else if (buttonNumber == sideMouseButton1)
             {
-                sideMouseBtnDown++;
-                if (sideMouseBtnDown > 1)
+                if (num == sideMouseButtonDown)
                 {
-                    sideMouseBtnDown = 0;
-                    return;
+                    // Action On
+                    InvokeMethodByName(this, "AutoCraftOn");
                 }
+                else if(num == sideMouseButtonUp)
+                {
+                    if (sideMouseBtn1Toggle)
+                    {
+                        sideMouseBtn1Toggle = false;
+                        return;
+                    }
 
-                if (!activatedButtons.Contains(sideMouseButton))
-                {
-                    activatedButtons.Add(sideMouseButton);
-                }
-                else
-                {
-                    activatedButtons.Remove(sideMouseButton);
+                    // Action Off
+                    InvokeMethodByName(this, "AutoCraftOff");
+
+                    sideMouseBtn1Toggle = true;
                 }
             }
-            else if ((wParam.ToInt32() & 0xFFFF) == WM_XBUTTONUP || (int)wParam == (int)(IntPtr)WM_XBUTTONUP)
+            else if(buttonNumber == sideMouseButton2)
             {
-                sideMouseBtnDown++;
-                if (sideMouseBtnDown > 1)
+                if (num == sideMouseButtonDown)
                 {
-                    sideMouseBtnDown = 0;
-                    return;
-                }
+                    if(!activatedButtons.Contains(buttonNumber.ToString()))
+                        activatedButtons.Add(buttonNumber.ToString());
 
-                if (!activatedButtons.Contains(sideMouseButton))
-                {
-                    activatedButtons.Add(sideMouseButton);
+                    // Action On
+                    InvokeMethodByName(this, "HoldLMBOn");
                 }
-                else
+                else if (num == sideMouseButtonUp)
                 {
-                    activatedButtons.Remove(sideMouseButton);
+                    if (sideMouseBtn2Toggle)
+                    {
+                        sideMouseBtn2Toggle = false;
+                        return;
+                    }
+                    
+                    if(activatedButtons.Contains(buttonNumber.ToString()))
+                        activatedButtons.Remove(buttonNumber.ToString());
+
+                    // Action Off
+                    InvokeMethodByName(this, "HoldLMBOff");
+
+                    sideMouseBtn2Toggle = true;
                 }
             }
+            
 
             // Only change colors if a button is not pressed
             if (activatedButtons.Count == 0 && activatedKeys.Count == 0)
@@ -344,7 +372,57 @@ namespace KeyDownAlert
             Invalidate();
         }
 
+        public void HoldLMBOn()
+        {
+            keyHolder.AddKeyToHold(lMouseButton);
+        }
+        public void HoldLMBOff()
+        {
+            keyHolder.RemoveKeyToHold(lMouseButton);
+        }
+        public void AutoRunOn()
+        {
+            // Convert Keys.W to string
+            string keyString = Enum.GetName(typeof(Keys), Keys.W);
+            keyHolder.AddKeyToHold(keyString);
 
+            keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
+            keyHolder.AddKeyToHold(keyString);
+        }
+        public void AutoRunOff()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.W);
+            keyHolder.RemoveKeyToHold(keyString);
+
+            keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
+            keyHolder.RemoveKeyToHold(keyString);
+        }
+        public void AutoCraftOn()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.F);
+            keyHolder.AddKeyToHold(keyString);
+        }
+        public void AutoCraftOff()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.F);
+            keyHolder.RemoveKeyToHold(keyString);
+        }
+
+        static void InvokeMethodByName(object target, string methodName)
+        {
+            // Get the MethodInfo for the specified method name
+            MethodInfo methodInfo = target.GetType().GetMethod(methodName);
+
+            if (methodInfo != null)
+            {
+                // Invoke the method on the target object
+                methodInfo.Invoke(target, null);
+            }
+            else
+            {
+                //($"Method '{methodName}' not found.");
+            }
+        }
 
         #region Menu Clicks
         private void SettingsMenuItem_Click(object sender, EventArgs e)
@@ -421,24 +499,34 @@ namespace KeyDownAlert
         {
             if (nCode >= 0)
             {
+                MSLLHOOKSTRUCT hookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
+
                 // Skip mouse move
                 if (wParam == (IntPtr)WM_MOUSEMOVE)
                     return CallNextHookEx(mouseHookId, nCode, wParam, lParam);
-                else
-                    OnInputChanged(wParam);
-                /*
-                bool newInputState = wParam == (IntPtr)WM_LBUTTONDOWN ||
-                                     wParam == (IntPtr)WM_RBUTTONDOWN ||
-                                     wParam == (IntPtr)WM_MBUTTONDOWN ||
-                                     wParam == (IntPtr)(WM_XBUTTONDOWN | XBUTTON1) ||
-                                     wParam == (IntPtr)(WM_XBUTTONDOWN | XBUTTON2) ||
-                                     wParam == (IntPtr)WM_MOUSEWHEEL;
 
-                // Notify subscribers about the input change
-                if (newInputState != isInputActive)
+                // Determine which button was pressed
+                int buttonNumber = 0;
+
+                if ((int)hookStruct.mouseData > 0)
+                    buttonNumber = (int)hookStruct.mouseData;
+                else if ((int)wParam > 0)
+                    buttonNumber = (int)wParam;
+
+                OnInputChanged(wParam, buttonNumber);
+
+                if (buttonNumber == sideMouseButton1 || buttonNumber == sideMouseButton2)
                 {
-                    OnInputChanged(wParam);
-                }*/
+                    // Prevent default side mouse actions
+                    hookStruct.mouseData = 0;
+
+                    // Convert the modified structure back to IntPtr
+                    IntPtr modifiedLParam = Marshal.AllocHGlobal(Marshal.SizeOf(hookStruct));
+                    Marshal.StructureToPtr(hookStruct, modifiedLParam, true);
+
+                    // Return the modified IntPtr to block the default action
+                    return modifiedLParam;
+                }
             }
 
             return CallNextHookEx(mouseHookId, nCode, wParam, lParam);
@@ -453,7 +541,7 @@ namespace KeyDownAlert
                 if (newInputState != isInputActive)
                 {
                     isInputActive = newInputState;
-                    OnInputChanged(wParam);
+                    OnInputChanged(wParam, 0);
                 }
             }
 
@@ -510,18 +598,19 @@ namespace KeyDownAlert
         #region WinDLLs
 
         // Event handler for InputChanged event
-        protected virtual void OnInputChanged(IntPtr wParam)
+        protected virtual void OnInputChanged(IntPtr wParam, int buttonNumber)
         {
-            InputChanged?.Invoke(this, new InputChangedEventArgs(wParam));
+            InputChanged?.Invoke(this, new InputChangedEventArgs(wParam, buttonNumber));
         }
 
         public class InputChangedEventArgs : EventArgs
         {
             public IntPtr WParam { get; }
-
-            public InputChangedEventArgs(IntPtr wParam)
+            public int ButtonNumber { get; }
+            public InputChangedEventArgs(IntPtr wParam, int buttonNumber)
             {
                 WParam = wParam;
+                ButtonNumber = buttonNumber;
             }
         }
 
