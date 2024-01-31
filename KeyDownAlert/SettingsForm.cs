@@ -19,6 +19,7 @@ namespace KeyDownAlert
         public int Diameter { get; set; }
         public Color PressedColor { get; set; }
         public Color NotPressedColor { get; set; }
+        public Buttons Buttons { get; set; }
         public SettingsForm()
         {
             InitializeComponent();
@@ -49,23 +50,16 @@ namespace KeyDownAlert
         }
 
 
-        private void CloseForm()
-        {
-            if (int.TryParse(DiameterTextBox.Text, out int result) && result > 0)
-            {
-                Diameter = result;
-                DialogResult = DialogResult.OK;
-            }
-            else
-            {
-                MessageBox.Show("Invalid input. Please enter a positive integer.");
-            }
-        }
         private void SettingsForm_Load(object sender, EventArgs e)
         {
-            SetTextBoxes();
+            SetGUI();
         }
-        private void SetTextBoxes()
+
+
+
+        #region GUI Updates
+        // GUI updates
+        private void SetGUI()
         {
             DiameterTextBox.Text = Diameter.ToString();
             NotPressedATextBox.Text = NotPressedColor.A.ToString();
@@ -77,15 +71,47 @@ namespace KeyDownAlert
             PressedRTextBox.Text = PressedColor.R.ToString();
             PressedGTextBox.Text = PressedColor.G.ToString();
             PressedBTextBox.Text = PressedColor.B.ToString();
-        }
-        private int Clamp(int value, int min, int max)
-        {
-            return (value < min) ? min : (value > max) ? max : value;
+
+            foreach (Button button in Buttons.ButtonList)
+            {
+                Control[] matchingControls = Controls.Find(button.Name + "ComboBox", true);
+
+                if (matchingControls.Length > 0 && matchingControls[0] is ComboBox matchingButton)
+                {
+                    matchingButton.Items.Add(button);
+                    matchingButton.SelectedItem = button;
+                }
+            }
+
         }
 
-        private void NotPressedTextBox_KeyDown(object sender, KeyEventArgs e)
+        private void UpdateDiameter()
         {
-            UpdateNotPressed();
+            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            form1.SetDiameter(Diameter);
+        }
+        private void UpdatePressed()
+        {
+            int a, r, g, b;
+
+            if (int.TryParse(PressedATextBox.Text, out a) &&
+                int.TryParse(PressedRTextBox.Text, out r) &&
+                int.TryParse(PressedGTextBox.Text, out g) &&
+                int.TryParse(PressedBTextBox.Text, out b))
+            {
+                // Ensure the values are within the valid range
+                a = Clamp(a, 0, 255);
+                r = Clamp(r, 0, 255);
+                g = Clamp(g, 0, 255);
+                b = Clamp(b, 0, 255);
+
+                PressedColor = Color.FromArgb(a, r, g, b);
+
+                Invalidate();
+            }
+
+            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            form1.SetPressedColor(PressedColor);
         }
         private void UpdateNotPressed()
         {
@@ -110,35 +136,12 @@ namespace KeyDownAlert
             form1.SetNotPressedColor(NotPressedColor);
             form1.SetDiameter(Diameter);
         }
-        private void PressedTextBox_KeyDown(object sender, KeyEventArgs e)
-        {
-            UpdatePressed();
-        }
+        #endregion
 
-        private void UpdatePressed()
-        {
-            int a, r, g, b;
 
-            if (int.TryParse(PressedATextBox.Text, out a) &&
-                int.TryParse(PressedRTextBox.Text, out r) &&
-                int.TryParse(PressedGTextBox.Text, out g) &&
-                int.TryParse(PressedBTextBox.Text, out b))
-            {
-                // Ensure the values are within the valid range
-                a = Clamp(a, 0, 255);
-                r = Clamp(r, 0, 255);
-                g = Clamp(g, 0, 255);
-                b = Clamp(b, 0, 255);
-
-                PressedColor = Color.FromArgb(a, r, g, b);
-
-                Invalidate();
-            }
-
-            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
-            form1.SetPressedColor(PressedColor);
-        }
-        private void NotPressedTextBox_MouseDown(object sender, MouseEventArgs e)
+        #region Mouse Events
+        // Mouse events
+        private void BothTextBoxes_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
@@ -147,7 +150,7 @@ namespace KeyDownAlert
                 (sender as TextBox).Cursor = Cursors.Hand;
             }
         }
-        private void NotPressedTextBox_MouseMove(object sender, MouseEventArgs e)
+        private void BothTextBoxes_MouseMove(object sender, MouseEventArgs e)
         {
             if (isDragging)
             {
@@ -166,13 +169,14 @@ namespace KeyDownAlert
 
                         UpdateNotPressed();
                         UpdatePressed();
+                        UpdateDiameter();
                     }
                 }
 
                 dragStartPoint = e.Location;
             }
         }
-        private void NotPressedTextBox_MouseUp(object sender, MouseEventArgs e)
+        private void BothTextBoxes_MouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
@@ -181,35 +185,6 @@ namespace KeyDownAlert
                 UpdateNotPressed();
                 UpdatePressed();
             }
-        }
-
-        private void UpdateDiameter()
-        {
-            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
-            form1.SetDiameter(Diameter);
-        }
-        private void DiameterTextBox_KeyDown(object sender, KeyEventArgs e)
-        {
-
-        }
-
-        private void DiameterTextBox_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (int.TryParse(DiameterTextBox.Text, out int diameter) && diameter > 0)
-            {
-                Diameter = diameter;
-            }
-        }
-
-        private void DefaultsButton_Click(object sender, EventArgs e)
-        {
-            PressedColor = Color.Red;
-            NotPressedColor = Color.Green;
-            Diameter = 100;
-            SetTextBoxes();
-            UpdatePressed();
-            UpdateNotPressed();
-            UpdateDiameter();
         }
 
 
@@ -222,7 +197,6 @@ namespace KeyDownAlert
                 (sender as TextBox).Cursor = Cursors.Hand;
             }
         }
-
         private void DiameterTextBox_MouseMove(object sender, MouseEventArgs e)
         {
             if (isDragging)
@@ -246,7 +220,6 @@ namespace KeyDownAlert
                 dragStartPoint = e.Location;
             }
         }
-
         private void DiameterTextBox_MouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
@@ -255,5 +228,68 @@ namespace KeyDownAlert
                 (sender as TextBox).Cursor = Cursors.IBeam;
             }
         }
+        #endregion
+
+
+        #region Key Down/Up
+        // Key down
+        private void PressedTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            UpdatePressed();
+        }
+        private void NotPressedTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            UpdateNotPressed();
+        }
+
+
+        private void DiameterTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+
+        }
+        private void DiameterTextBox_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (int.TryParse(DiameterTextBox.Text, out int diameter) && diameter > 0)
+            {
+                Diameter = diameter;
+            }
+        }
+        #endregion
+
+
+        // Buttons
+        private void DefaultsButton_Click(object sender, EventArgs e)
+        {
+            PressedColor = Color.Red;
+            NotPressedColor = Color.Green;
+            Diameter = 100;
+            SetGUI();
+            UpdatePressed();
+            UpdateNotPressed();
+            UpdateDiameter();
+        }
+
+
+        #region Comboboxes
+        // Comboboxes
+        private void AllComboBoxes_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (sender is ComboBox comboBox)
+            {    
+                Button matchingButton = Buttons.ButtonList.Find(b => b.Name.Equals(comboBox.Name.Replace("ComboBox", "")));
+                matchingButton.Action = comboBox.Text;
+            }
+        }
+        #endregion
+
+
+        // Helpers
+        private int Clamp(int value, int min, int max)
+        {
+            return (value < min) ? min : (value > max) ? max : value;
+        }
+
+
+
     }
 }

@@ -10,11 +10,13 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace KeyDownAlert
 {
     public partial class Form1 : Form
     {
+        #region Initialize
         SettingsForm settingsForm;
         KeyHolder keyHolder = new KeyHolder();
 
@@ -29,10 +31,14 @@ namespace KeyDownAlert
         private Color backgroundColor = SystemColors.Control;
         private DateTime lastClickTime = DateTime.MinValue;
         bool clearCircle = false;
-        int sideMouseBtnDown = 0;
         bool mMouseToggle = false;
         Color notPressedColor;
         Color pressedColor;
+        Buttons Buttons = new Buttons();
+
+        private System.Windows.Forms.Timer rotationTimer;
+        private float rotationAngle = 0.0f;
+        private bool rotateClockwise = true;
 
         private bool isMouseDown = false;
         private Point mouseDownLocation;
@@ -55,7 +61,6 @@ namespace KeyDownAlert
 
         public event EventHandler<InputChangedEventArgs> InputChanged;
 
-
         public void SetPressedColor(Color color)
         {
             this.pressedColor = color;
@@ -75,7 +80,7 @@ namespace KeyDownAlert
             Size = new Size(circleDiameter, circleDiameter);
             Invalidate();
         }
-        #region Load/Close
+        
         public Form1()
         {
             InitializeComponent();
@@ -97,9 +102,19 @@ namespace KeyDownAlert
             this.ContextMenuStrip = new ContextMenuStrip();
             this.ContextMenuStrip.Items.Add("Settings", null, SettingsMenuItem_Click);
             this.ContextMenuStrip.Items.Add("Exit", null, ExitMenuItem_Click);
+
+            pictureBox.Visible = false;
+
+            // Set up Timer properties
+            rotationTimer = new System.Windows.Forms.Timer();
+            rotationTimer.Interval = 500;
+            rotationTimer.Tick += RotationTimer_Tick;            
         }
+        #endregion
 
 
+        #region Paint
+        // Paint
         protected override void OnPaint(PaintEventArgs e)
         {
             try
@@ -132,8 +147,48 @@ namespace KeyDownAlert
             return color.A >= 0 && color.R >= 0 && color.G >= 0 && color.B >= 0;
         }
 
+        // Rotate Image
+        private void RotationTimer_Tick(object sender, EventArgs e)
+        {
+            const float rotationSpeed = 20.0f;
+            float rotationIncrement = rotationSpeed * (rotateClockwise ? -1 : 1);
+
+            rotationAngle += rotationIncrement;
+            if (rotationAngle >= 20 || rotationAngle <= -20)
+            {
+                rotateClockwise = !rotateClockwise;
+            }
+
+            RotateImage(rotationAngle);
+        }
+        private void RotateImage(float angle)
+        {
+            if (pictureBox.Image != null)
+            {
+                Bitmap rotatedImage = new Bitmap(pictureBox.Image.Width, pictureBox.Image.Height);
+
+                using (Graphics g = Graphics.FromImage(rotatedImage))
+                {
+                    g.TranslateTransform((float)rotatedImage.Width / 2, (float)rotatedImage.Height / 2);
+                    g.RotateTransform(angle);
+                    g.TranslateTransform(-(float)rotatedImage.Width / 2, -(float)rotatedImage.Height / 2);
+                    g.DrawImage(pictureBox.Image, Point.Empty);
+                }
+
+                // Dispose the previous image to release resources
+                pictureBox.Image.Dispose();
+
+                // Set the PictureBox.Image to the rotated image
+                pictureBox.Image = rotatedImage;
+            }
+            Invalidate();
+        }
+
+        #endregion
 
 
+
+        #region Load/Close
         private void Form1_Load(object sender, EventArgs e)
         {
             Point savedLocation = AppSettings.Load<Point>("Location");
@@ -146,7 +201,36 @@ namespace KeyDownAlert
             else
                 circleDiameter = 100;
 
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBox.Dock = DockStyle.Fill;
+
             LoadColors();
+
+            Buttons savedButtons = AppSettings.Load<Buttons>("Buttons");
+            if(savedButtons != null )
+            {
+                Buttons = savedButtons;
+            }
+            else
+            {
+                Button button = new Button();                
+                button.Id = sideMouseButton1.ToString();
+                button.Name = "SideMouse1";
+                button.Action = "AutoCraft";
+                Buttons.ButtonList.Add(button);
+
+                button = new Button();
+                button.Id = sideMouseButton2.ToString();
+                button.Name = "SideMouse2";
+                button.Action = "AutoHarvest";
+                Buttons.ButtonList.Add(button);
+
+                button = new Button();
+                button.Id = mMouseButton;
+                button.Name = "MiddleMouse";
+                button.Action = "AutoRun";
+                Buttons.ButtonList.Add(button);
+            }
 
             this.Invalidate();
         }
@@ -192,6 +276,8 @@ namespace KeyDownAlert
             AppSettings.Save<int>("NotPressedColorR", notPressedColor.R);
             AppSettings.Save<int>("NotPressedColorG", notPressedColor.G);
             AppSettings.Save<int>("NotPressedColorB", notPressedColor.B);
+
+            AppSettings.Save<Buttons>("Buttons", Buttons);
         }
         private void StartHooking()
         {
@@ -218,13 +304,13 @@ namespace KeyDownAlert
         #endregion
 
 
+        //Main Logic
         private void InputChangedHandler(object sender, InputChangedEventArgs e)
         {
             IntPtr wParam = e.WParam;
             int buttonNumber = e.ButtonNumber;
             int num = (int)(IntPtr)wParam;
             //textBox1.AppendText($"\n num= {num}");
-
 
 
             if (wParam == (IntPtr)WM_KEYDOWN || (int)wParam == (int)(IntPtr)WM_KEYDOWN)
@@ -287,7 +373,9 @@ namespace KeyDownAlert
                     mMouseToggle = true;
 
                     // Action On
-                    InvokeMethodByName(this, "AutoRunOn");
+                    Button matchingButton = Buttons.ButtonList.Find(b => b.Id.ToString().Equals(mMouseButton.ToString()));
+                    if (matchingButton != null)
+                        InvokeMethodByName(this, matchingButton.Action + "On");
                 }
                 else
                 {
@@ -299,7 +387,9 @@ namespace KeyDownAlert
                     mMouseToggle = false;
 
                     // Action Off
-                    InvokeMethodByName(this, "AutoRunOff");
+                    Button matchingButton = Buttons.ButtonList.Find(b => b.Id.ToString().Equals(mMouseButton.ToString()));
+                    if (matchingButton != null)
+                        InvokeMethodByName(this, matchingButton.Action + "Off");
                 }
             }
             else if (wParam == (IntPtr)WM_MBUTTONUP || (int)wParam == (int)(IntPtr)WM_MBUTTONUP)
@@ -314,7 +404,9 @@ namespace KeyDownAlert
                 if (num == sideMouseButtonDown)
                 {
                     // Action On
-                    InvokeMethodByName(this, "AutoCraftOn");
+                    Button matchingButton = Buttons.ButtonList.Find(b => b.Id.ToString().Equals(sideMouseButton1.ToString()));
+                    if (matchingButton != null)
+                        InvokeMethodByName(this, matchingButton.Action + "On");
                 }
                 else if(num == sideMouseButtonUp)
                 {
@@ -325,7 +417,9 @@ namespace KeyDownAlert
                     }
 
                     // Action Off
-                    InvokeMethodByName(this, "AutoCraftOff");
+                    Button matchingButton = Buttons.ButtonList.Find(b => b.Id.ToString().Equals(sideMouseButton1.ToString()));
+                    if (matchingButton != null)
+                        InvokeMethodByName(this, matchingButton.Action + "Off");
 
                     sideMouseBtn1Toggle = true;
                 }
@@ -338,7 +432,9 @@ namespace KeyDownAlert
                         activatedButtons.Add(buttonNumber.ToString());
 
                     // Action On
-                    InvokeMethodByName(this, "HoldLMBOn");
+                    Button matchingButton = Buttons.ButtonList.Find(b => b.Id.ToString().Equals(sideMouseButton2.ToString()));
+                    if (matchingButton != null)
+                        InvokeMethodByName(this, matchingButton.Action + "On");
                 }
                 else if (num == sideMouseButtonUp)
                 {
@@ -352,7 +448,9 @@ namespace KeyDownAlert
                         activatedButtons.Remove(buttonNumber.ToString());
 
                     // Action Off
-                    InvokeMethodByName(this, "HoldLMBOff");
+                    Button matchingButton = Buttons.ButtonList.Find(b => b.Id.ToString().Equals(sideMouseButton2.ToString()));
+                    if (matchingButton != null)
+                        InvokeMethodByName(this, matchingButton.Action + "Off");
 
                     sideMouseBtn2Toggle = true;
                 }
@@ -372,74 +470,6 @@ namespace KeyDownAlert
             Invalidate();
         }
 
-        public void HoldLMBOn()
-        {
-            keyHolder.AddKeyToHold(lMouseButton);
-        }
-        public void HoldLMBOff()
-        {
-            keyHolder.RemoveKeyToHold(lMouseButton);
-        }
-        public void AutoRunOn()
-        {
-            // Convert Keys.W to string
-            string keyString = Enum.GetName(typeof(Keys), Keys.W);
-            keyHolder.AddKeyToHold(keyString);
-
-            keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
-            keyHolder.AddKeyToHold(keyString);
-        }
-        public void AutoRunOff()
-        {
-            string keyString = Enum.GetName(typeof(Keys), Keys.W);
-            keyHolder.RemoveKeyToHold(keyString);
-
-            keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
-            keyHolder.RemoveKeyToHold(keyString);
-        }
-        public void AutoCraftOn()
-        {
-            string keyString = Enum.GetName(typeof(Keys), Keys.F);
-            keyHolder.AddKeyToHold(keyString);
-        }
-        public void AutoCraftOff()
-        {
-            string keyString = Enum.GetName(typeof(Keys), Keys.F);
-            keyHolder.RemoveKeyToHold(keyString);
-        }
-
-        static void InvokeMethodByName(object target, string methodName)
-        {
-            // Get the MethodInfo for the specified method name
-            MethodInfo methodInfo = target.GetType().GetMethod(methodName);
-
-            if (methodInfo != null)
-            {
-                // Invoke the method on the target object
-                methodInfo.Invoke(target, null);
-            }
-            else
-            {
-                //($"Method '{methodName}' not found.");
-            }
-        }
-
-        #region Menu Clicks
-        private void SettingsMenuItem_Click(object sender, EventArgs e)
-        {
-            // Show the settings form
-            ShowSettingsForm();
-        }
-        private void ExitMenuItem_Click(object sender, EventArgs e)
-        {
-            UnhookAndSave();
-
-            Close();
-        }
-        #endregion
-
-
-        
         private void ShowSettingsForm()
         {
             if (isSettingsFormOpen)
@@ -458,26 +488,94 @@ namespace KeyDownAlert
 
             settingsForm = new SettingsForm();
 
+            // Send settings
             settingsForm.Diameter = circleDiameter;
             settingsForm.PressedColor = Color.FromArgb(pressedColor.ToArgb());
             settingsForm.NotPressedColor = Color.FromArgb(notPressedColor.ToArgb());
+            settingsForm.Buttons = Buttons;
 
             settingsForm.ShowDialog();
 
+            // Extract settings
             circleDiameter = settingsForm.Diameter;
             pressedColor = settingsForm.PressedColor;
             notPressedColor = settingsForm.NotPressedColor;
+            Buttons = settingsForm.Buttons;
 
+            // Update GUI
             Size = new Size(circleDiameter, circleDiameter);
-
             clearCircle = true;
             Invalidate();
-            StayInFront(Handle);
 
+            StayInFront(Handle);
             isSettingsFormOpen = false;
         }
 
 
+
+        #region Macro Actions
+        public void AutoHarvestOn()
+        {
+            keyHolder.AddKeyToHold(lMouseButton);
+            ShowImage(Properties.Resources.AutoHarvest);
+        }
+        public void AutoHarvestOff()
+        {
+            keyHolder.RemoveKeyToHold(lMouseButton);
+            HideImage();
+        }
+        public void AutoRunOn()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
+            keyHolder.AddKeyToHold(keyString);
+
+            // Convert Keys.W to string
+            keyString = Enum.GetName(typeof(Keys), Keys.W);
+            keyHolder.AddKeyToHold(keyString);
+
+            ShowImage(Properties.Resources.AutoRun);
+        }
+        public void AutoRunOff()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.W);
+            keyHolder.RemoveKeyToHold(keyString);
+
+            keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
+            keyHolder.RemoveKeyToHold(keyString);
+
+            HideImage();
+        }
+        public void AutoCraftOn()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.F);
+            keyHolder.AddKeyToHold(keyString);
+
+            ShowImage(Properties.Resources.AutoCraft);
+        }
+        public void AutoCraftOff()
+        {
+            string keyString = Enum.GetName(typeof(Keys), Keys.F);
+            keyHolder.RemoveKeyToHold(keyString);
+
+            HideImage();
+        }
+        #endregion
+
+
+
+        #region Menu Clicks
+        private void SettingsMenuItem_Click(object sender, EventArgs e)
+        {
+            // Show the settings form
+            ShowSettingsForm();
+        }
+        private void ExitMenuItem_Click(object sender, EventArgs e)
+        {
+            UnhookAndSave();
+
+            Close();
+        }
+        #endregion
 
 
         #region Hooks
@@ -677,6 +775,35 @@ namespace KeyDownAlert
         const uint TOPMOST_FLAGS = SWP_NOMOVE | SWP_NOSIZE;
         static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
         #endregion
+
+        // Helpers
+        static void InvokeMethodByName(object target, string methodName)
+        {
+            // Get the MethodInfo for the specified method name
+            MethodInfo methodInfo = target.GetType().GetMethod(methodName);
+
+            if (methodInfo != null)
+            {
+                // Invoke the method on the target object
+                methodInfo.Invoke(target, null);
+            }
+            else
+            {
+                //($"Method '{methodName}' not found.");
+            }
+        }
+        void ShowImage(Image image)
+        {
+            pictureBox.Visible = true;
+            pictureBox.Image = image;
+            rotationTimer.Start();
+        }
+        void HideImage()
+        {
+            rotationTimer.Stop();
+            pictureBox.Visible = false;
+            pictureBox.Image = null;
+        }
 
 
     }
