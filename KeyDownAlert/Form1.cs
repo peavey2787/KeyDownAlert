@@ -523,7 +523,6 @@ namespace KeyDownAlert
         public void AutoHarvestOff()
         {
             mouseHolder.RemoveButtonToHold(lMouseButton);
-            //Task.Run(() => { mouseHolder.RemoveKeyToHold(lMouseButton); });
             HideImage("AutoHarvest");
         }
         public void AutoRunOn()
