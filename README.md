@@ -8,5 +8,3 @@ Shows a green circle when no mouse/keyboard buttons are pressed and a red circle
 Click and drag the circle to move it.
 Right click the circle to open the menu to exit or open settings.
 
-# Tips
-The middle mouse button and the 2 side mouse buttons are set to toggle.
