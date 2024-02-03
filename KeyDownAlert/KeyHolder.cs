@@ -13,6 +13,7 @@ namespace KeyDownAlert
         private readonly List<string> keysToHold = new List<string>();
         private readonly object lockObject = new object();
         private volatile bool isRunning = true;
+        public IntPtr hWnd { get; set; } = IntPtr.Zero;
 
         public void AddKeyToHold(string virtualKeyCode)
         {
@@ -45,7 +46,7 @@ namespace KeyDownAlert
                     // Convert the string back to Keys enumeration
                     if (Enum.TryParse<Keys>(virtualKeyCode, out Keys key))
                     {
-                        Keyboard.ReleaseKey((ushort)key);
+                        Keyboard.ReleaseKey(hWnd, (ushort)key);
                     }
                 }
             }
@@ -65,12 +66,12 @@ namespace KeyDownAlert
                     foreach (var key in keysToHold)
                     {                        
                         if (key.ToString() == "LMB")
-                            Keyboard.PressLeftMouseButton();
+                            Keyboard.PressLeftMouseButton(hWnd);
                         else
                         {
                             if (Enum.TryParse<Keys>(key, out Keys vkCode))
                             {
-                                Keyboard.HoldKeyDown((ushort)vkCode);
+                                Keyboard.HoldKeyDown(hWnd, (ushort)vkCode);
                             }
                         }
                     }
@@ -85,18 +86,7 @@ namespace KeyDownAlert
             {
                 foreach (var key in keysToHold)
                 {
-
-                    if (key.ToString() == "LMB")
-                    {
-                        
-                    }
-                    else
-                    {
-                        if (Enum.TryParse<Keys>(key, out Keys vkCode))
-                        {
-                            Keyboard.ReleaseKey((ushort)vkCode);
-                        }
-                    }
+                    RemoveKeyToHold(key);
                 }
             }
         }

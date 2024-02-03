@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -36,6 +38,9 @@ namespace KeyDownAlert
         Color pressedColor;
         Buttons Buttons = new Buttons();
 
+        const string PALWORLDEXENAME = "Palworld-Win64-Shipping";
+        private IntPtr _palHwnd = IntPtr.Zero;
+
         private System.Windows.Forms.Timer rotationTimer;
         private float rotationAngle = 0.0f;
         private bool rotateClockwise = true;
@@ -60,7 +65,21 @@ namespace KeyDownAlert
         string mMouseButton = "MMB";
 
         public event EventHandler<InputChangedEventArgs> InputChanged;
-
+        public IntPtr PalHwnd
+        {
+            get
+            {
+                if (_palHwnd == IntPtr.Zero)
+                {
+                    _palHwnd = Keyboard.GetMainWindowHandle(PALWORLDEXENAME);
+                }
+                return _palHwnd;
+            }
+            set
+            {
+                _palHwnd = value;
+            }
+        }
         public void SetPressedColor(Color color)
         {
             this.pressedColor = color;
@@ -147,42 +166,7 @@ namespace KeyDownAlert
             return color.A >= 0 && color.R >= 0 && color.G >= 0 && color.B >= 0;
         }
 
-        // Rotate Image
-        private void RotationTimer_Tick(object sender, EventArgs e)
-        {
-            const float rotationSpeed = 20.0f;
-            float rotationIncrement = rotationSpeed * (rotateClockwise ? -1 : 1);
-
-            rotationAngle += rotationIncrement;
-            if (rotationAngle >= 20 || rotationAngle <= -20)
-            {
-                rotateClockwise = !rotateClockwise;
-            }
-
-            RotateImage(rotationAngle);
-        }
-        private void RotateImage(float angle)
-        {
-            if (pictureBox.Image != null)
-            {
-                Bitmap rotatedImage = new Bitmap(pictureBox.Image.Width, pictureBox.Image.Height);
-
-                using (Graphics g = Graphics.FromImage(rotatedImage))
-                {
-                    g.TranslateTransform((float)rotatedImage.Width / 2, (float)rotatedImage.Height / 2);
-                    g.RotateTransform(angle);
-                    g.TranslateTransform(-(float)rotatedImage.Width / 2, -(float)rotatedImage.Height / 2);
-                    g.DrawImage(pictureBox.Image, Point.Empty);
-                }
-
-                // Dispose the previous image to release resources
-                pictureBox.Image.Dispose();
-
-                // Set the PictureBox.Image to the rotated image
-                pictureBox.Image = rotatedImage;
-            }
-            Invalidate();
-        }
+       
 
         #endregion
 
@@ -311,6 +295,20 @@ namespace KeyDownAlert
             int buttonNumber = e.ButtonNumber;
             int num = (int)(IntPtr)wParam;
             //textBox1.AppendText($"\n num= {num}");
+
+            // Get the handle of the foreground window
+            IntPtr hwnd = GetForegroundWindow();
+            // Get the process ID of the foreground window
+            uint processId;
+            GetWindowThreadProcessId(hwnd, out processId);
+            // Get the process associated with the process ID
+            Process process = Process.GetProcessById((int)processId);
+
+            // Check if the process name is "MyProcessNameHere"
+            if (process.ProcessName != PALWORLDEXENAME)
+            {
+                return;
+            }
 
 
             if (wParam == (IntPtr)WM_KEYDOWN || (int)wParam == (int)(IntPtr)WM_KEYDOWN)
@@ -460,7 +458,7 @@ namespace KeyDownAlert
             // Only change colors if a button is not pressed
             if (activatedButtons.Count == 0 && activatedKeys.Count == 0)
             {
-                isInputActive = false;
+                isInputActive = true;// false;
             }
             else
             {
@@ -515,49 +513,56 @@ namespace KeyDownAlert
 
         #region Macro Actions
         public void AutoHarvestOn()
-        {
+        {            
+            Keyboard.PressLeftMouseButton(PalHwnd);
+            keyHolder.hWnd = PalHwnd;
             keyHolder.AddKeyToHold(lMouseButton);
-            ShowImage(Properties.Resources.AutoHarvest);
+            ShowImage("AutoHarvest", Properties.Resources.AutoHarvest);
         }
         public void AutoHarvestOff()
         {
             keyHolder.RemoveKeyToHold(lMouseButton);
-            HideImage();
+            HideImage("AutoHarvest");
         }
         public void AutoRunOn()
         {
-            string keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
-            keyHolder.AddKeyToHold(keyString);
+            //string keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
+            //keyHolder.AddKeyToHold(keyString);
+
+            Keyboard.HoldKeyDown(PalHwnd, (ushort)Keys.LShiftKey);            
 
             // Convert Keys.W to string
-            keyString = Enum.GetName(typeof(Keys), Keys.W);
+            string keyString = Enum.GetName(typeof(Keys), Keys.W);
+            keyHolder.hWnd = PalHwnd;
             keyHolder.AddKeyToHold(keyString);
 
-            ShowImage(Properties.Resources.AutoRun);
+            ShowImage("AutoRun", Properties.Resources.AutoRun);
         }
         public void AutoRunOff()
         {
             string keyString = Enum.GetName(typeof(Keys), Keys.W);
             keyHolder.RemoveKeyToHold(keyString);
 
-            keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
-            keyHolder.RemoveKeyToHold(keyString);
+            //keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
+            //keyHolder.RemoveKeyToHold(keyString);
+            Keyboard.ReleaseKey(PalHwnd, (ushort)Keys.LShiftKey);
 
-            HideImage();
+            HideImage("AutoRun");
         }
         public void AutoCraftOn()
         {
             string keyString = Enum.GetName(typeof(Keys), Keys.F);
+            keyHolder.hWnd = PalHwnd;
             keyHolder.AddKeyToHold(keyString);
 
-            ShowImage(Properties.Resources.AutoCraft);
+            ShowImage("AutoCraft", Properties.Resources.AutoCraft);
         }
         public void AutoCraftOff()
         {
             string keyString = Enum.GetName(typeof(Keys), Keys.F);
             keyHolder.RemoveKeyToHold(keyString);
 
-            HideImage();
+            HideImage("AutoCraft");
         }
         #endregion
 
@@ -768,6 +773,12 @@ namespace KeyDownAlert
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
         private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
         
         const uint SWP_NOSIZE = 0x0001;
@@ -792,18 +803,103 @@ namespace KeyDownAlert
                 //($"Method '{methodName}' not found.");
             }
         }
-        void ShowImage(Image image)
+
+        private Dictionary<string, Image> imageDictionary = new Dictionary<string, Image>();
+        private string currentImageKey;
+
+        void ShowImage(string key, Image image)
         {
             pictureBox.Visible = true;
-            pictureBox.Image = image;
+
+            // Set the current image to the most recent one
+            currentImageKey = key;
+
+            // Add the image to the dictionary if the key doesn't exist
+            if (!imageDictionary.ContainsKey(key))
+            {
+                imageDictionary.Add(key, image);
+            }
+
             rotationTimer.Start();
         }
-        void HideImage()
+
+        void HideImage(string key)
         {
             rotationTimer.Stop();
-            pictureBox.Visible = false;
-            pictureBox.Image = null;
+
+            // Remove the image from the dictionary if it exists
+            if (imageDictionary.ContainsKey(key))
+            {
+                imageDictionary.Remove(key);
+            }
+
+            // Set the PictureBox.Image to the new most recent image
+            if (imageDictionary.Count > 0)
+            {
+                currentImageKey = imageDictionary.Keys.Last();
+                rotationTimer.Start();
+            }
+            else
+            {
+                rotationTimer.Stop();
+                currentImageKey = null;
+                pictureBox.Image = null;
+                pictureBox.Visible = false;
+            }
         }
+
+        private void RotationTimer_Tick(object sender, EventArgs e)
+        {
+            const float rotationSpeed = 20.0f;
+            float rotationIncrement = rotationSpeed * (rotateClockwise ? -1 : 1);
+
+            rotationAngle += rotationIncrement;
+            if (rotationAngle >= 20 || rotationAngle <= -20)
+            {
+                rotateClockwise = !rotateClockwise;
+            }
+
+            RotateImage();
+        }
+
+        private void RotateImage()
+        {
+            if (!string.IsNullOrEmpty(currentImageKey) && imageDictionary.ContainsKey(currentImageKey))
+            {
+                Image currentImage = imageDictionary[currentImageKey];
+
+                Bitmap originalImage = CloneImage((Bitmap)currentImage);
+                Bitmap rotatedImage = new Bitmap(originalImage.Width, originalImage.Height);
+
+                using (Graphics g = Graphics.FromImage(rotatedImage))
+                {
+                    g.TranslateTransform((float)rotatedImage.Width / 2, (float)rotatedImage.Height / 2);
+                    g.RotateTransform(rotationAngle);
+                    g.TranslateTransform(-(float)rotatedImage.Width / 2, -(float)rotatedImage.Height / 2);
+                    g.DrawImage(originalImage, Point.Empty);
+                }
+
+                // Dispose the previous image to release resources
+                originalImage.Dispose();
+
+                // Set the PictureBox.Image to the rotated image
+                pictureBox.Image = rotatedImage;
+            }
+            BringToFront();
+            Invalidate();
+        }
+
+        private Bitmap CloneImage(Bitmap source)
+        {
+            return new Bitmap(source);
+        }
+
+
+
+
+
+
+
 
 
     }

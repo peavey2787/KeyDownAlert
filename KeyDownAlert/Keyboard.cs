@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace KeyDownAlert
@@ -12,6 +14,9 @@ namespace KeyDownAlert
         // Import the necessary functions from user32.dll
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT
@@ -58,91 +63,64 @@ namespace KeyDownAlert
         private const int INPUT_MOUSE = 0;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        
+        // Constants for SendMessage and keyboard/mouse events
+        private const uint WM_KEYDOWN = 0x0100;
+        private const uint WM_KEYUP = 0x0101;
+        private const uint WM_CHAR = 0x0102;
+        private const uint WM_LBUTTONDOWN = 0x0201;
+        private const uint WM_LBUTTONUP = 0x0202;
 
-        // Simulate typing a string
-        internal static void Type(string text)
+        internal static IntPtr GetMainWindowHandle(string processFileNameWithoutExt)
+        {
+            Process[] processes = Process.GetProcessesByName(processFileNameWithoutExt);
+
+            if (processes.Length > 0)
+            {
+                return processes[0].MainWindowHandle;
+            }
+
+            return IntPtr.Zero;
+        }
+
+        // Modify other methods to accept a window handle (hwnd) parameter
+        internal static void Type(IntPtr hwnd, string text)
         {
             foreach (char c in text)
             {
-                SimulateKeyPress(c);
-                System.Threading.Thread.Sleep(50); // Add a small delay between keypresses to simulate typing speed
+                SimulateKeyPress(hwnd, c);
+                Thread.Sleep(50);
             }
         }
 
-        internal static void HoldKeyDown(ushort virtualKeyCode)
+        internal static void HoldKeyDown(IntPtr hwnd, ushort virtualKeyCode)
         {
-            INPUT[] inputs = new INPUT[1];
-
-            // Press key down
-            inputs[0].Type = INPUT_KEYBOARD;
-            inputs[0].Data.KeyboardInput.wVk = virtualKeyCode;
-            SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendMessage(hwnd, WM_KEYDOWN, virtualKeyCode, 0);
         }
 
-        internal static void ReleaseKey(ushort virtualKeyCode)
+        internal static void ReleaseKey(IntPtr hwnd, ushort virtualKeyCode)
         {
-            INPUT[] inputs = new INPUT[1];
-
-            // Release key
-            inputs[0].Type = INPUT_KEYBOARD;
-            inputs[0].Data.KeyboardInput.wVk = virtualKeyCode;
-            inputs[0].Data.KeyboardInput.dwFlags = KEYEVENTF_KEYUP;
-            SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendMessage(hwnd, WM_KEYUP, virtualKeyCode, 0);
         }
 
-
-
-        private static void SimulateKeyPress(char key)
+        private static void SimulateKeyPress(IntPtr hwnd, char key)
         {
-            INPUT[] inputs = new INPUT[2];
-
-            // Press key down
-            inputs[0].Type = INPUT_KEYBOARD;
-            inputs[0].Data.KeyboardInput.wVk = 0; // 0 means we're sending a Unicode character
-            inputs[0].Data.KeyboardInput.wScan = key;
-            inputs[0].Data.KeyboardInput.dwFlags = KEYEVENTF_UNICODE;
-
-            // Release key
-            inputs[1].Type = INPUT_KEYBOARD;
-            inputs[1].Data.KeyboardInput.wVk = 0; // 0 means we're sending a Unicode character
-            inputs[1].Data.KeyboardInput.wScan = key;
-            inputs[1].Data.KeyboardInput.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-
-            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
-        }
-        private static void SimulateKeyPress(ushort virtualKeyCode)
-        {
-            INPUT[] inputs = new INPUT[2];
-
-            // Press key down
-            inputs[0].Type = INPUT_KEYBOARD;
-            inputs[0].Data.KeyboardInput.wVk = virtualKeyCode;
-            inputs[0].Data.KeyboardInput.wScan = 0;
-            inputs[0].Data.KeyboardInput.dwFlags = 0;
-
-            // Release key
-            inputs[1].Type = INPUT_KEYBOARD;
-            inputs[1].Data.KeyboardInput.wVk = virtualKeyCode;
-            inputs[1].Data.KeyboardInput.wScan = 0;
-            inputs[1].Data.KeyboardInput.dwFlags = KEYEVENTF_KEYUP;
-
-            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendMessage(hwnd, WM_CHAR, key, 0);
         }
 
-
-        internal static void PressLeftMouseButton()
+        private static void SimulateKeyPress(IntPtr hwnd, ushort virtualKeyCode)
         {
-            INPUT[] inputs = new INPUT[1];
-
-            // Press left mouse button down
-            inputs[0].Type = INPUT_MOUSE;
-            inputs[0].Data.MouseInput.dwFlags = MOUSEEVENTF_LEFTDOWN;
-            SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
-
-            // Release left mouse button
-            inputs[0].Type = INPUT_MOUSE;
-            inputs[0].Data.MouseInput.dwFlags = MOUSEEVENTF_LEFTUP;
-            SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendMessage(hwnd, WM_KEYDOWN, virtualKeyCode, 0);
+            Thread.Sleep(50); 
+            SendMessage(hwnd, WM_KEYUP, virtualKeyCode, 0);
         }
+
+        internal static void PressLeftMouseButton(IntPtr hwnd)
+        {
+            SendMessage(hwnd, WM_LBUTTONDOWN, 0, 0);
+            Thread.Sleep(50);
+            SendMessage(hwnd, WM_LBUTTONUP, 0, 0);
+        }
+
     }
 }
