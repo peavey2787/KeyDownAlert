@@ -35,7 +35,7 @@ namespace KeyDownAlert
         {
             lock (lockObject)
             {
-                keysToHold.Remove(virtualKeyCode);
+                 keysToHold.Remove(virtualKeyCode);
 
                 if (virtualKeyCode == "LMB")
                 {
@@ -86,9 +86,77 @@ namespace KeyDownAlert
             {
                 foreach (var key in keysToHold)
                 {
-                    RemoveKeyToHold(key);
+                    if (key.ToString() == "LMB")
+                        continue;
+                    else
+                        RemoveKeyToHold(key);
                 }
             }
         }
     }
+
+    public class MouseHolder
+    {
+        private readonly List<string> keysToHold = new List<string>();
+        private readonly object lockObject = new object();
+        private volatile bool isRunning = true;
+        public IntPtr hWnd { get; set; } = IntPtr.Zero;
+
+        public void AddButtonToHold(string button)
+        {
+            if (!keysToHold.Contains(button))
+            {
+                lock (lockObject)
+                {
+                    keysToHold.Add(button);
+                }
+
+                if (keysToHold.Count == 1)
+                {
+                    // Start holding the key instantly
+                    HoldButtons();
+                }
+            }
+        }
+
+        public void RemoveButtonToHold(string virtualKeyCode)
+        {
+            lock (lockObject)
+            {
+                keysToHold.Remove(virtualKeyCode);
+            }
+        }
+
+        public void Stop()
+        {
+            isRunning = false;
+        }
+
+        private void HoldButtons()
+        {
+            while (isRunning)
+            {
+                List<string> keysToHoldCopy;
+
+                lock (lockObject)
+                {
+                    keysToHoldCopy = new List<string>(keysToHold);
+                }
+
+                foreach (var key in keysToHoldCopy)
+                {
+                    if (key == "LMB")
+                    {
+                        Keyboard.PressLeftMouseButton(hWnd);
+                    }
+                }
+
+                // Sleep for a short duration to avoid high CPU usage
+                Thread.Sleep(500);
+            }
+        }
+    }
+
 }
+
+

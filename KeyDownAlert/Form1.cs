@@ -21,6 +21,7 @@ namespace KeyDownAlert
         #region Initialize
         SettingsForm settingsForm;
         KeyHolder keyHolder = new KeyHolder();
+        MouseHolder mouseHolder = new MouseHolder();
 
         private readonly HookProc mouseHookCallback;
         private readonly HookProc keyboardHookCallback;
@@ -515,23 +516,20 @@ namespace KeyDownAlert
         public void AutoHarvestOn()
         {            
             Keyboard.PressLeftMouseButton(PalHwnd);
-            keyHolder.hWnd = PalHwnd;
-            keyHolder.AddKeyToHold(lMouseButton);
+            mouseHolder.hWnd = PalHwnd;
+            Task.Run(() => { mouseHolder.AddButtonToHold(lMouseButton); });
             ShowImage("AutoHarvest", Properties.Resources.AutoHarvest);
         }
         public void AutoHarvestOff()
         {
-            keyHolder.RemoveKeyToHold(lMouseButton);
+            mouseHolder.RemoveButtonToHold(lMouseButton);
+            //Task.Run(() => { mouseHolder.RemoveKeyToHold(lMouseButton); });
             HideImage("AutoHarvest");
         }
         public void AutoRunOn()
         {
-            //string keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
-            //keyHolder.AddKeyToHold(keyString);
-
             Keyboard.HoldKeyDown(PalHwnd, (ushort)Keys.LShiftKey);            
 
-            // Convert Keys.W to string
             string keyString = Enum.GetName(typeof(Keys), Keys.W);
             keyHolder.hWnd = PalHwnd;
             keyHolder.AddKeyToHold(keyString);
@@ -543,8 +541,6 @@ namespace KeyDownAlert
             string keyString = Enum.GetName(typeof(Keys), Keys.W);
             keyHolder.RemoveKeyToHold(keyString);
 
-            //keyString = Enum.GetName(typeof(Keys), Keys.LShiftKey);
-            //keyHolder.RemoveKeyToHold(keyString);
             Keyboard.ReleaseKey(PalHwnd, (ushort)Keys.LShiftKey);
 
             HideImage("AutoRun");
