@@ -1,5 +1,5 @@
 # How I look
-![Screenshot 2024-01-29 145803](https://github.com/peavey2787/KeyDownAlert/assets/11081113/79dd4a75-2705-4f1b-b2bb-65c213e7a749)
+![Screenshot 2024-03-02 233711](https://github.com/peavey2787/KeyDownAlert/assets/11081113/18296272-c342-4685-a0e1-ad7479f78dcb)
 
 # What I Do
 Shows a green circle when no mouse/keyboard buttons are pressed and a red circle when they are pressed. 
