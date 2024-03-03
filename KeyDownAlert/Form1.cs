@@ -70,10 +70,10 @@ namespace KeyDownAlert
         {
             get
             {
-                if (_palHwnd == IntPtr.Zero)
-                {
+                //if (_palHwnd == IntPtr.Zero)
+                //{
                     _palHwnd = Keyboard.GetMainWindowHandle(PALWORLDEXENAME);
-                }
+                //}
                 return _palHwnd;
             }
             set

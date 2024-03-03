@@ -15,6 +15,7 @@ namespace KeyDownAlert
         private bool isDragging = false;
         private Point dragStartPoint;
         private int dragStep = 1;
+        private bool appHasControl = false;
 
         public int Diameter { get; set; }
         public Color PressedColor { get; set; }
@@ -72,17 +73,61 @@ namespace KeyDownAlert
             PressedGTextBox.Text = PressedColor.G.ToString();
             PressedBTextBox.Text = PressedColor.B.ToString();
 
+            /*
+                int sideMouseButton1 = 131072;
+                int sideMouseButton2 = 65536;
+                int sideMouseButtonUp = 524;
+                int sideMouseButtonDown = 523;
+
+                string keyboard = "keyboard";
+                string lMouseButton = "LMB";
+                string rMouseButton = "RMB";
+                string mMouseButton = "MMB";
+             */
+            // Set default buttons for comboboxes
+            Buttons defaultButtons = new Buttons();
+            Button defaultButton = new Button();
+            defaultButton.Id = "131072";
+            defaultButton.Name = "SideMouse1";
+            defaultButton.Action = "AutoCraft";
+            defaultButtons.ButtonList.Add(defaultButton);
+
+            defaultButton = new Button();
+            defaultButton.Id = "65536";
+            defaultButton.Name = "SideMouse2";
+            defaultButton.Action = "AutoHarvest";
+            defaultButtons.ButtonList.Add(defaultButton);
+
+            defaultButton = new Button();
+            defaultButton.Id = "MMB";
+            defaultButton.Name = "MiddleMouse";
+            defaultButton.Action = "AutoRun";
+            defaultButtons.ButtonList.Add(defaultButton);
+
+            // Set selected options
+            appHasControl = true;
             foreach (Button button in Buttons.ButtonList)
             {
                 Control[] matchingControls = Controls.Find(button.Name + "ComboBox", true);
 
-                if (matchingControls.Length > 0 && matchingControls[0] is ComboBox matchingButton)
+                if (matchingControls.Length > 0 && matchingControls[0] is ComboBox matchingComboBox)
                 {
-                    matchingButton.Items.Add(button);
-                    matchingButton.SelectedItem = button;
+                    // Add default buttons to options
+                    Button selectedButton = new Button();
+                    foreach (Button buttonOption in defaultButtons.ButtonList)
+                    {
+                        matchingComboBox.Items.Add(buttonOption);
+
+                        if(buttonOption.Action == button.Action)
+                        {
+                            selectedButton = buttonOption;
+                        }
+                    }
+                     
+                    matchingComboBox.SelectedItem = selectedButton;
                 }
             }
-
+            appHasControl = false;
         }
 
         private void UpdateDiameter()
@@ -274,7 +319,7 @@ namespace KeyDownAlert
         // Comboboxes
         private void AllComboBoxes_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (sender is ComboBox comboBox)
+            if (!appHasControl && sender is ComboBox comboBox)
             {    
                 Button matchingButton = Buttons.ButtonList.Find(b => b.Name.Equals(comboBox.Name.Replace("ComboBox", "")));
                 matchingButton.Action = comboBox.Text;
