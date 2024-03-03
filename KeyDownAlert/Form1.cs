@@ -39,7 +39,7 @@ namespace KeyDownAlert
         Color pressedColor;
         Buttons Buttons = new Buttons();
 
-        const string PALWORLDEXENAME = "Palworld-Win64-Shipping";
+        private string gameExeName = "Palworld-Win64-Shipping";
         private IntPtr _palHwnd = IntPtr.Zero;
 
         private System.Windows.Forms.Timer rotationTimer;
@@ -70,10 +70,7 @@ namespace KeyDownAlert
         {
             get
             {
-                //if (_palHwnd == IntPtr.Zero)
-                //{
-                    _palHwnd = Keyboard.GetMainWindowHandle(PALWORLDEXENAME);
-                //}
+                _palHwnd = Keyboard.GetMainWindowHandle(gameExeName);
                 return _palHwnd;
             }
             set
@@ -306,7 +303,7 @@ namespace KeyDownAlert
             Process process = Process.GetProcessById((int)processId);
 
             // Check if the process name is "MyProcessNameHere"
-            if (process.ProcessName != PALWORLDEXENAME)
+            if (process.ProcessName != gameExeName)
             {
                 return;
             }
@@ -492,6 +489,7 @@ namespace KeyDownAlert
             settingsForm.PressedColor = Color.FromArgb(pressedColor.ToArgb());
             settingsForm.NotPressedColor = Color.FromArgb(notPressedColor.ToArgb());
             settingsForm.Buttons = Buttons;
+            settingsForm.GameExeName = gameExeName;
 
             settingsForm.ShowDialog();
 
@@ -500,6 +498,7 @@ namespace KeyDownAlert
             pressedColor = settingsForm.PressedColor;
             notPressedColor = settingsForm.NotPressedColor;
             Buttons = settingsForm.Buttons;
+            gameExeName = settingsForm.GameExeName;
 
             // Update GUI
             Size = new Size(circleDiameter, circleDiameter);

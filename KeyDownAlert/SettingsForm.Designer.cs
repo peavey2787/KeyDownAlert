@@ -57,6 +57,8 @@
             this.SideMouse1ComboBox = new System.Windows.Forms.ComboBox();
             this.SideMouse2ComboBox = new System.Windows.Forms.ComboBox();
             this.MiddleMouseComboBox = new System.Windows.Forms.ComboBox();
+            this.GameExeNameTextBox = new System.Windows.Forms.TextBox();
+            this.label16 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // DiameterTextBox
@@ -311,7 +313,7 @@
             // 
             this.SideMouse1ComboBox.FormattingEnabled = true;
             this.SideMouse1ComboBox.Location = new System.Drawing.Point(261, 71);
-            this.SideMouse1ComboBox.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
+            this.SideMouse1ComboBox.Margin = new System.Windows.Forms.Padding(1);
             this.SideMouse1ComboBox.Name = "SideMouse1ComboBox";
             this.SideMouse1ComboBox.Size = new System.Drawing.Size(94, 21);
             this.SideMouse1ComboBox.TabIndex = 26;
@@ -321,7 +323,7 @@
             // 
             this.SideMouse2ComboBox.FormattingEnabled = true;
             this.SideMouse2ComboBox.Location = new System.Drawing.Point(261, 130);
-            this.SideMouse2ComboBox.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
+            this.SideMouse2ComboBox.Margin = new System.Windows.Forms.Padding(1);
             this.SideMouse2ComboBox.Name = "SideMouse2ComboBox";
             this.SideMouse2ComboBox.Size = new System.Drawing.Size(94, 21);
             this.SideMouse2ComboBox.TabIndex = 27;
@@ -331,17 +333,37 @@
             // 
             this.MiddleMouseComboBox.FormattingEnabled = true;
             this.MiddleMouseComboBox.Location = new System.Drawing.Point(261, 204);
-            this.MiddleMouseComboBox.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
+            this.MiddleMouseComboBox.Margin = new System.Windows.Forms.Padding(1);
             this.MiddleMouseComboBox.Name = "MiddleMouseComboBox";
             this.MiddleMouseComboBox.Size = new System.Drawing.Size(94, 21);
             this.MiddleMouseComboBox.TabIndex = 28;
             this.MiddleMouseComboBox.SelectedIndexChanged += new System.EventHandler(this.AllComboBoxes_SelectedIndexChanged);
+            // 
+            // GameExeNameTextBox
+            // 
+            this.GameExeNameTextBox.Location = new System.Drawing.Point(286, 12);
+            this.GameExeNameTextBox.Name = "GameExeNameTextBox";
+            this.GameExeNameTextBox.Size = new System.Drawing.Size(162, 20);
+            this.GameExeNameTextBox.TabIndex = 29;
+            this.GameExeNameTextBox.Text = "Palworld-Win64-Shipping";
+            this.GameExeNameTextBox.TextChanged += new System.EventHandler(this.GameExeNameTextBox_TextChanged);
+            // 
+            // label16
+            // 
+            this.label16.AutoSize = true;
+            this.label16.Location = new System.Drawing.Point(224, 15);
+            this.label16.Name = "label16";
+            this.label16.Size = new System.Drawing.Size(56, 13);
+            this.label16.TabIndex = 30;
+            this.label16.Text = "Game Exe";
             // 
             // SettingsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(492, 253);
+            this.Controls.Add(this.label16);
+            this.Controls.Add(this.GameExeNameTextBox);
             this.Controls.Add(this.MiddleMouseComboBox);
             this.Controls.Add(this.SideMouse2ComboBox);
             this.Controls.Add(this.SideMouse1ComboBox);
@@ -410,5 +432,7 @@
         private System.Windows.Forms.ComboBox SideMouse1ComboBox;
         private System.Windows.Forms.ComboBox SideMouse2ComboBox;
         private System.Windows.Forms.ComboBox MiddleMouseComboBox;
+        private System.Windows.Forms.TextBox GameExeNameTextBox;
+        private System.Windows.Forms.Label label16;
     }
 }

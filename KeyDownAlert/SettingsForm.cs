@@ -21,6 +21,7 @@ namespace KeyDownAlert
         public Color PressedColor { get; set; }
         public Color NotPressedColor { get; set; }
         public Buttons Buttons { get; set; }
+        public string GameExeName { get; set; }
         public SettingsForm()
         {
             InitializeComponent();
@@ -72,6 +73,8 @@ namespace KeyDownAlert
             PressedRTextBox.Text = PressedColor.R.ToString();
             PressedGTextBox.Text = PressedColor.G.ToString();
             PressedBTextBox.Text = PressedColor.B.ToString();
+
+            GameExeNameTextBox.Text = GameExeName;
 
             /*
                 int sideMouseButton1 = 131072;
@@ -334,7 +337,14 @@ namespace KeyDownAlert
             return (value < min) ? min : (value > max) ? max : value;
         }
 
-
-
+        private void GameExeNameTextBox_TextChanged(object sender, EventArgs e)
+        {
+            string newVal = GameExeNameTextBox.Text;
+            if(newVal.Contains(".exe"))            
+                newVal = newVal.Replace(".exe", "");
+            if (newVal.Contains("exe"))
+                newVal = newVal.Replace("exe", "");
+            GameExeName = GameExeNameTextBox.Text;
+        }
     }
 }
